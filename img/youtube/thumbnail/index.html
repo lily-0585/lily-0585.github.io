@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- Favicon & PWA manifest -->
+<link rel="icon" href="../../../assets/icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="../../../assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../../../assets/icons/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../../../assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="../../../site.webmanifest">
+<meta name="theme-color" content="#0b1020">
+<title>YouTube 썸네일 추출 · 다운로드</title>
+<style>
+  :root{--bg:#0b1020;--card:#131a33;--text:#e8ecff;--muted:#a9b0d9;--ring:rgba(110,168,255,.35);--btn:#2b4de0;--ghost:#1a234a}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,"Noto Sans KR","Malgun Gothic",Arial;line-height:1.4}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 14px 64px}
+  h1{margin:0 0 8px;font-size:clamp(20px,3.8vw,28px)}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .panel{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:0 10px 24px rgba(0,0,0,.28);padding:14px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input[type=text]{flex:1;min-width:260px;border:1px solid rgba(255,255,255,.15);background:#0f1633;color:var(--text);border-radius:10px;padding:12px}
+  button{cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font-weight:700}
+  .primary{background:var(--btn);color:#fff}
+  .ghost{background:var(--ghost);color:#fff}
+  .muted{color:var(--muted);font-size:12px}
+  .status{min-height:18px;margin-top:6px}
+  /* 그리드: 항상 16:9 자리 확보해 레이아웃 깨짐 방지 */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+  @media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:560px){.grid{grid-template-columns:1fr}}
+  .card{border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden;background:#0f1633;display:flex;flex-direction:column}
+  .slot{position:relative;aspect-ratio:16/9;background:#0b1129;display:grid;place-items:center}
+  .thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);color:#cfe1ff;font-size:11px;padding:3px 6px;border-radius:6px}
+  .meta{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px}
+  .dim{font-size:12px;color:#cfe1ff}
+  .actions{display:flex;gap:8px}
+  .actions .btn{background:var(--btn);color:#fff;padding:8px 10px;border-radius:8px}
+  .actions .btn.ghost{background:var(--ghost)}
+  .err{color:#ffb3b3;text-align:center;padding:10px}
+  .tip{margin-top:10px;font-size:12px;color:#9ab6ff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>YouTube 썸네일 추출 · 다운로드</h1>
+  <div class="sub">링크 붙여넣기 → 추출. 이미지는 브라우저에서 직접 다운로드 시도.</div>
+
+  <section class="panel">
+    <div class="row">
+      <input id="url" type="text" placeholder="예) https://youtu.be/VIDEO_ID 또는 https://www.youtube.com/watch?v=VIDEO_ID">
+      <button id="extract" class="primary">추출</button>
+      <button id="clear" class="ghost">리셋</button>
+    </div>
+    <div class="muted tip">지원: watch?v= · youtu.be/ · shorts/ · embed/ · 직접 ID. 잘못된 파라미터는 자동 무시.</div>
+    <div id="status" class="muted status"></div>
+    <div id="out" class="grid"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const out = $('#out');
+  const status = $('#status');
+
+  const VARIANTS = [
+    {name:'maxresdefault', label:'최대해상도'},
+    {name:'sddefault',     label:'SD 640w'},
+    {name:'hqdefault',     label:'HQ 480w'},
+    {name:'mqdefault',     label:'MQ 320w'},
+    {name:'default',       label:'기본 120w'},
+    {name:'0', label:'프레임 0'}, {name:'1', label:'프레임 1'}, {name:'2', label:'프레임 2'}, {name:'3', label:'프레임 3'}
+  ];
+
+  function getVideoId(input){
+    const s = (input||'').trim();
+    if (!s) return '';
+    // 직접 ID만 들어온 경우
+    if (/^[A-Za-z0-9_-]{6,}$/.test(s)) return s;
+    try{
+      const ms = s.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
+      if (ms) return ms[1];
+      const ms2 = s.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{6,})/);
+      if (ms2) return ms2[1];
+      const ms3 = s.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/);
+      if (ms3) return ms3[1];
+      const u = new URL(s);
+      if ((u.hostname.includes('youtube.com')||u.hostname.includes('m.youtube.com')) && u.searchParams.get('v')){
+        return u.searchParams.get('v');
+      }
+    }catch{}
+    return '';
+  }
+  const urlOf = (id, v) => `https://i.ytimg.com/vi/${id}/${v}.jpg`;
+
+  function setStatus(msg, ok=true){ status.textContent = msg||''; status.style.color = ok ? '#a9b0d9' : '#ffb3b3'; }
+
+  function render(id){
+    out.innerHTML = '';
+    if (!id){ setStatus('유효한 링크 또는 영상 ID를 입력하세요.', false); return; }
+    setStatus(`VIDEO_ID: ${id}`);
+    VARIANTS.forEach(v => addCard(id, v));
+  }
+
+  function addCard(id, variant){
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = variant.label;
+    slot.appendChild(badge);
+
+    const img = document.createElement('img');
+    img.className = 'thumb';
+    img.alt = variant.name;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.src = urlOf(id, variant.name);
+
+    const dim = document.createElement('span');
+    dim.className = 'dim';
+    dim.textContent = '로딩 중…';
+
+    img.onload = () => {
+      dim.textContent = `${img.naturalWidth}×${img.naturalHeight}`;
+    };
+    img.onerror = () => {
+      slot.innerHTML = `<div class="err">이 해상도는 제공되지 않습니다 (${variant.name})</div>`;
+    };
+
+    slot.appendChild(img);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.appendChild(dim);
+
+    const acts = document.createElement('div');
+    acts.className = 'actions';
+
+    const btnDl = document.createElement('button');
+    btnDl.className = 'btn';
+    btnDl.textContent = '다운로드';
+    btnDl.onclick = () => forceDownload(img.src, `thumb-${id}-${variant.name}.jpg`);
+
+    const btnCopy = document.createElement('button');
+    btnCopy.className = 'btn ghost';
+    btnCopy.textContent = 'URL 복사';
+    btnCopy.onclick = async () => {
+      try{ await navigator.clipboard.writeText(img.src); setStatus('URL 복사됨', true); }
+      catch{ setStatus('클립보드 접근 실패', false); }
+    };
+
+    acts.appendChild(btnDl);
+    acts.appendChild(btnCopy);
+    meta.appendChild(acts);
+
+    card.appendChild(slot);
+    card.appendChild(meta);
+    out.appendChild(card);
+  }
+
+  // 우선 fetch→blob로 "바로 다운로드" 시도. CORS 차단 시 원본 링크로 폴백.
+  async function forceDownload(url, filename){
+    try{
+      const res = await fetch(url, {mode:'cors'});
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+      setStatus('다운로드 시작', true);
+    }catch(e){
+      // 폴백: 새 탭으로 열어 브라우저 기본 저장 사용
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.click();
+      setStatus('CORS 차단. 새 탭으로 열었습니다.', false);
+    }
+  }
+
+  $('#extract').addEventListener('click', () => {
+    const raw = $('#url').value.trim();
+    render(getVideoId(raw));
+  });
+  $('#clear').addEventListener('click', () => {
+    $('#url').value = '';
+    out.innerHTML = '';
+    setStatus('');
+  });
+
+  // 모바일 키보드에서 엔터 전송
+  $('#url').addEventListener('keydown', e => { if (e.key === 'Enter') $('#extract').click(); });
+})();
+</script>
+</body>
+</html>

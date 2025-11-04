@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Favicon & PWA manifest -->
+  <link rel="icon" href="../../assets/icons/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="../../assets/icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../../assets/icons/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="../../assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="../../site.webmanifest">
+  <meta name="theme-color" content="#0b1020">
+  
+  <title>이모지 픽커 · 클릭 복사</title>
+  <style>
+    :root{--bg:#0b1020;--card:#111733;--hover:#19224a;--text:#eef2ff;--muted:#9aa4c7;--ring:rgba(110,168,255,.35);--chip:#1a2348}
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(1100px 700px at 70% -10%, #1a2455 0%, transparent 60%),radial-gradient(800px 600px at -10% 110%, #122046 0%, transparent 60%),var(--bg);color:var(--text);font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,"Noto Sans KR",Malgun Gothic,Arial}
+    .wrap{max-width:1100px;margin:0 auto;padding:28px 16px 60px}
+    h1{margin:0 0 8px;font-size:22px}
+    .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+
+    .panel{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.28);padding:14px}
+    .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .search{flex:1;display:flex;align-items:center;background:#0f1531;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 10px}
+    .search input{flex:1;border:0;background:transparent;color:var(--text);outline:none;font-size:14px}
+
+    .chips{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+    .chip{cursor:pointer;padding:8px 10px;border-radius:999px;background:var(--chip);border:1px solid rgba(255,255,255,.12);font-size:12px;color:var(--muted)}
+    .chip.active{outline:3px solid var(--ring);color:#dbe6ff}
+
+    .grid{margin-top:12px;display:grid;grid-template-columns:repeat(10, minmax(52px,1fr));gap:8px}
+    @media (max-width:900px){.grid{grid-template-columns:repeat(8, minmax(48px,1fr));}}
+    @media (max-width:680px){.grid{grid-template-columns:repeat(6, minmax(44px,1fr));}}
+
+    button.emoji{height:56px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#0f1633;color:#fff;font-size:28px;cursor:pointer}
+    button.emoji:hover,button.emoji:focus-visible{background:var(--hover);border-color:rgba(110,168,255,.45);outline:none;box-shadow:0 0 0 6px var(--ring)}
+
+    .toolbar{margin-top:8px;display:flex;gap:8px;align-items:center;justify-content:space-between;color:var(--muted);font-size:12px}
+
+    .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0e1530;border:1px solid rgba(255,255,255,.2);color:#e8f0ff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .2s, transform .2s}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>이모지 픽커</h1>
+    <div class="sub">카테고리 선택 → 이모지 클릭 시 복사. 검색 지원.</div>
+
+    <div class="panel">
+      <div class="top">
+        <div class="search"><input id="q" placeholder="검색: 스마일, 하트, 국기… 또는 이모지 붙여넣기"></div>
+        <div class="small" id="count" style="color:var(--muted);font-size:12px"></div>
+      </div>
+
+      <div class="chips" id="chips"></div>
+      <div class="grid" id="grid" role="list"></div>
+
+      <div class="toolbar"><span>클릭하면 이모지가 클립보드에 복사됨</span><span id="selInfo"></span></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+  // --- 데이터: 카테고리별 이모지 ---
+  const DATA = {
+    "스마일": ["😀","😃","😄","😁","😆","😅","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😋","😛","😜","🤪","🤓","😎","🥳","😏","😞","😔","😕","🙁","☹️","😢","😭","😤","😠","😡","🤬","🤯","🥵","🥶","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","😶","😐","😑","😬","🙄","😮‍💨","😮","😯","😲","😴","🤤","😪","😵","😵‍💫","🤐","🥱","🤧","🤒","🤕","🤢","🤮","🤠"],
+    "사람/제스처": ["👍","👎","👊","✊","🤛","🤜","👏","🙌","👐","🤲","🤝","🙏","✍️","💅","🤳","💪","🦵","🦶","👂","👃","🧠","🦷","🦴","👀","👁️","👅","👄","🫦","🫶","🫸","🫷","🫵","☝️","👆","👇","👈","👉","✌️","🤞","🤟","🤘","🤙","👋","🤚","🖐️","✋","🖖","👌","🤌","🤏","🫰"],
+    "동물/자연": ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🐛","🐜","🐞","🦋","🐌","🐢","🐍","🦎","🐙","🦑","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐊","🌸","🌼","🌻","🌹","🌷","🌺","🌴","🌳","🌲","🍀","🍁","🍂","🌈","☀️","⛅","☁️","🌧️","⛈️","❄️","🔥"],
+    "음식": ["🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🥒","🌶️","🌽","🥕","🥔","🧄","🧅","🍄","🥜","🍞","🥐","🥖","🥨","🧀","🥚","🍳","🥞","🧇","🥓","🥩","🍗","🍖","🌭","🍔","🍟","🍕","🥪","🌮","🌯","🥙","🍝","🍜","🍲","🍛","🍣","🍱","🍤","🍙","🍚","🍘","🍧","🍨","🍦","🧁","🍰","🎂","🍮","🍭","🍬","🍫","🍿","🧋","☕"],
+    "활동": ["⚽","🏀","🏈","⚾","🎾","🏐","🎱","🏓","🏸","🥅","🏒","🏑","🏏","⛳","🏌️","🏇","🧘‍♀️","🧘‍♂️","🏊‍♀️","🏊‍♂️","🚴‍♀️","🚴‍♂️","🏋️‍♀️","🏋️‍♂️","🤸‍♀️","🤸‍♂️","🤼‍♂️","🤼‍♀️","🤺"],
+    "여행/장소": ["🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚐","🚚","🚛","🚜","🛴","🚲","🛵","🏍️","🚂","🚆","🚇","✈️","🛫","🛬","🚀","🛸","⛵","🚤","🛥️","🚢","⚓","🗺️","🗽","🗼","🏰","🏯","🏟️","🏠","🏡","🏢","🏬","⛩️","⛪","🕌","🕍","🌋","🗻","⛰️"],
+    "사물": ["⌚","📱","💻","⌨️","🖥️","🖨️","🖱️","💽","💾","📼","📷","📸","🎥","📹","🎬","📺","📻","⏱️","⏰","🔋","🔌","💡","🔦","🕯️","🧯","🛢️","🔧","🔨","⚙️","🧰","🧪","🧬","💊","💉","🩹","🩺","🚪","🪑","🛏️","🛋️","🚿","🛁","🚽","🧻","🧼","🪥"],
+    "기호": ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","▶️","⏯️","⏸️","⏹️","⏺️","⏭️","⏮️","⏩","⏪","⬆️","⬇️","⬅️","➡️","↗️","↘️","↙️","↖️","🔁","🔂","#️⃣","*️⃣","0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","™️","®️","©️"],
+    "돈/결제": ["💰","🤑","💴","💵","💶","💷","💸","💳","🏧","🧾","🏦","🧿","👛","👜","🧮","🧾","📥","📤"],
+    "금융/지표": ["📈","📉","📊","💹","🧾","🧠","⚖️","🤝","🧾","🏦"],
+    "비즈/오피스": ["🧾","📄","📑","📂","🗂️","🗃️","🗄️","📦","✉️","📧","📨","📩","📠","🖊️","🖋️","✒️","📝","📅","📆","📎","🖇️","📌","📍","📊","📈","📉"],
+    "시간/달력": ["⏰","⏱️","⏲️","⌛","⏳","🗓️","📅","📆","🕐","🕑","🕒","🕓","🕔","🕕","🕖","🕗","🕘","🕙","🕚","🕛"],
+    "쇼핑/배송": ["🛒","🛍️","🏷️","💳","🧾","📦","📫","📮","🚚","🚛","📦","🔖"],
+    "보안/경고": ["🔒","🔓","🛡️","🧿","🚫","⛔","⚠️","❗","❕","❌","✅","🔐","🕵️"],
+    "교육": ["🎓","📚","📖","📝","🧑‍🏫","🏫","📎","📌","✏️","✒️","🧠","🔬","🧪"],
+    "코딩/기술": ["🤖", "🧑‍💻","💻","🖥️","⌨️","🖱️","🛠️","🧰","🧪","🧬","🧵","🧩","🛰️","📡","🔌","🔧","⚙️"],
+    "국기": ["🇰🇷","🇯🇵","🇺🇸","🇨🇳","🇬🇧","🇫🇷","🇩🇪","🇮🇹","🇪🇸","🇷🇺","🇧🇷","🇮🇳","🇨🇦","🇲🇽","🇦🇺","🇳🇿","🇸🇬","🇭🇰","🇵🇭","🇻🇳","🇹🇭","🇲🇾","🇹🇷","🇸🇦","🇦🇪","🇪🇺","🏳️","🏴","🏁","🚩"]
+  };
+
+  // 간단한 이름 맵(검색 키워드). 필요시 확장
+  const NAMES = {
+    "😀":"grinning", "😂":"joy", "❤️":"heart", "👍":"thumbs up", "🇰🇷":"korea", "🚗":"car", "🍕":"pizza", "☕":"coffee", "🐶":"dog", "🐱":"cat", "🌸":"flower", "✈️":"airplane", "🏠":"house", "💡":"light", "💻":"laptop"
+  };
+
+  const chips = document.getElementById('chips');
+  const grid = document.getElementById('grid');
+  const q = document.getElementById('q');
+  const toast = document.getElementById('toast');
+  const count = document.getElementById('count');
+  const selInfo = document.getElementById('selInfo');
+
+  let curCat = Object.keys(DATA)[0];
+  buildChips();
+  render();
+
+  q.addEventListener('input', render);
+
+  function buildChips(){
+    chips.innerHTML = '';
+    for (const k of Object.keys(DATA)){
+      const el = document.createElement('button');
+      el.className = 'chip'+(k===curCat?' active':'');
+      el.textContent = k;
+      el.addEventListener('click', () => { curCat = k; setActiveChip(k); render(); });
+      chips.appendChild(el);
+    }
+  }
+  function setActiveChip(k){
+    [...chips.children].forEach(c => c.classList.toggle('active', c.textContent===k));
+  }
+
+  function render(){
+    const term = q.value.trim().toLowerCase();
+    const list = DATA[curCat];
+    const out = [];
+    for (const e of list){
+      if (!term) out.push(e);
+      else {
+        const name = (NAMES[e]||'').toLowerCase();
+        if (e.includes(term) || name.includes(term)) out.push(e);
+      }
+    }
+    grid.innerHTML = '';
+    out.forEach(e => {
+      const b = document.createElement('button');
+      b.className = 'emoji';
+      b.setAttribute('role','listitem');
+      b.setAttribute('aria-label', `이모지 ${e} 복사`);
+      b.textContent = e;
+      b.addEventListener('click', () => copyEmoji(e));
+      grid.appendChild(b);
+    });
+    count.textContent = `${curCat}: ${out.length}개`;
+    selInfo.textContent = term?`필터: "${term}"`:'';
+  }
+
+  async function copyEmoji(e){
+    try {
+      await navigator.clipboard.writeText(e);
+      showToast(`복사됨: ${e}`);
+    } catch {
+      // fallback
+      const ta = Object.assign(document.createElement('textarea'), {value:e});
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      showToast(`복사됨: ${e}`);
+    }
+  }
+
+  function showToast(msg){
+    toast.textContent = msg; toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> toast.classList.remove('show'), 1200);
+  }
+  </script>
+</body>
+</html>

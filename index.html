@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>인베이더스쿨</title>
+  <meta name="description" content="화이팅" />
+
+  <!-- Favicon & PWA manifest -->
+  <link rel="icon" href="assets/icons/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="./site.webmanifest">
+  <meta name="theme-color" content="#0b1020">
+
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #131a33;
+      --card-hover: #182045;
+      --text: #e8ecff;
+      --muted: #a9b0d9;
+      --accent: #6ea8ff;
+      --ring: rgba(110,168,255,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; color: var(--text); background: radial-gradient(1200px 800px at 70% -20%, #1a2455 0%, transparent 60%),
+      radial-gradient(800px 600px at -10% 120%, #122046 0%, transparent 60%), var(--bg);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.4;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 48px 20px 72px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h1 { font-size: clamp(22px, 5vw, 32px); margin: 0; letter-spacing: .3px; }
+    .sub { color: var(--muted); font-size: 14px; margin-top: 1rem; margin-bottom: 1rem; }
+
+    /* 토글 그룹 */
+    details.group { border: 1px solid rgba(255,255,255,.06); border-radius: 16px; background: var(--card); box-shadow: 0 8px 24px rgba(0,0,0,.28); margin-bottom: 1rem; }
+    details.group[open] { box-shadow: 0 12px 32px rgba(8,20,60,.45); }
+    details.group > summary { cursor: pointer; list-style: none; user-select: none; padding: 18px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    details.group > summary::-webkit-details-marker { display: none; }
+    .summary-title { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 800; }
+    .chev { transition: transform .18s ease; opacity: .85; }
+    details.group[open] .chev { transform: rotate(180deg); }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 0 18px 18px; }
+    @media (max-width: 840px) { .grid { grid-template-columns: 1fr; } }
+
+    a.card { position: relative; display: block; padding: 22px 18px; background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.0)), var(--card);
+      border: 1px solid rgba(255,255,255,.06); border-radius: 16px; text-decoration: none; color: inherit; box-shadow: 0 8px 24px rgba(0,0,0,.28);
+      transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease; overflow: hidden; }
+    a.card:hover, a.card:focus-visible { transform: translateY(-2px); background: var(--card-hover); border-color: rgba(110,168,255,.45);
+      box-shadow: 0 12px 32px rgba(8,20,60,.45), 0 0 0 6px var(--ring); outline: none; }
+
+    .badge { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+    .title { display: flex; align-items: center; gap: 12px; margin: 8px 0 6px; font-size: 20px; font-weight: 700; }
+    .desc { font-size: 14px; color: var(--muted); margin: 0; }
+
+    .icon { width: 28px; height: 28px; display: inline-grid; place-items: center; border-radius: 10px; background: rgba(110,168,255,.18);
+      border: 1px solid rgba(110,168,255,.35); box-shadow: inset 0 -8px 18px rgba(110,168,255,.15); }
+
+    footer { margin-top: 36px; display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; }
+    .tips { opacity: .9; }
+    .tips kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px; padding: 2px 6px; border: 1px solid rgba(255,255,255,.15); border-bottom-width: 2px; border-radius: 6px; color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>잡동사니</h1>
+        <div class="sub">섹션을 클릭해 펼치기/접기</div>
+      </div>
+    </header>
+
+    <!-- 인베이더스쿨 섹션: 클릭 시 3개 카드 드롭다운 -->
+    <details class="group">
+      <summary>
+        <div class="summary-title">
+          <span class="icon" aria-hidden="true">🏫</span>
+          <span>인베이더스쿨</span>
+        </div>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="grid" role="list">
+        <!-- 1) 카카오 추적기 -->
+        <a class="card" role="listitem" href="invader/kakao/index.html" target="_blank" rel="noopener" aria-label="카카오 추적기 새 창으로 열기">
+          <div class="badge">카테고리 · 마케팅</div>
+          <div class="title">
+            <span class="icon" aria-hidden="true">📈</span>
+            <span>카카오 추적기</span>
+          </div>
+          <p class="desc">카카오 유입·전환 추적 화면으로 이동</p>
+        </a>
+
+        <!-- 2) 이메일 비교 -->
+        <a class="card" role="listitem" href="invader/rs/index.html" target="_blank" rel="noopener" aria-label="이메일 비교 새 창으로 열기">
+          <div class="badge">카테고리 · 운영</div>
+          <div class="title">
+            <span class="icon" aria-hidden="true">✉️</span>
+            <span>이메일 비교</span>
+          </div>
+          <p class="desc">두 목록 비교로 중복·차이 확인</p>
+        </a>
+
+        <!-- 3) 추첨 -->
+        <a class="card" role="listitem" href="invader/boom/index.html" target="_blank" rel="noopener" aria-label="추첨 도구 새 창으로 열기">
+          <div class="badge">카테고리 · 이벤트</div>
+          <div class="title">
+            <span class="icon" aria-hidden="true">🎲</span>
+            <span>추첨</span>
+          </div>
+          <p class="desc">실시간 당첨자 랜덤 선택</p>
+        </a>
+      </div>
+    </details>
+
+    <details class="group">
+      <summary>
+        <div class="summary-title">
+          <span class="icon" aria-hidden="true">🤩</span>
+          <span>이미지 관련</span>
+        </div>
+        <span class="chev">▾</span>
+      </summary>
+      <div class="grid" role="list">
+        <!-- 1) webp to png/jpg -->
+        <a class="card" role="listitem" href="img/webp/index.html" target="_blank" rel="noopener" aria-label="webp to png/jpg 새 창으로 열기">
+          <div class="badge">카테고리 · 이미지 변환</div>
+          <div class="title">
+            <span class="icon" aria-hidden="true">😲</span>
+            <span>webp to png/jpg</span>
+          </div>
+          <p class="desc">이미지 변환 화면으로 이동</p>
+        </a>
+
+        <!-- 2) 이모지모음 -->
+        <a class="card" role="listitem" href="img/emoji/index.html" target="_blank" rel="noopener" aria-label="이모지 새 창으로 열기">
+          <div class="badge">카테고리 · 이모지모음</div>
+          <div class="title">
+            <span class="icon" aria-hidden="true">😏</span>
+            <span>이모지모음</span>
+          </div>
+          <p class="desc">이미지 변환 화면으로 이동</p>
+        </a>
+
+        <!-- 2) 이모지모음 -->
+        <a class="card" role="listitem" href="img/youtube/thumbnail/index.html" target="_blank" rel="noopener" aria-label="썸네일추출 새 창으로 열기">
+          <div class="badge">카테고리 · 유튜브썸네일추출</div>
+          <div class="title">
+            <span class="icon" aria-hidden="true">😱</span>
+            <span>유튜브썸네일추출</span>
+          </div>
+          <p class="desc">유튜브썸네일추출 화면으로 이동</p>
+        </a>
+      </div>
+    </details>
+
+    <footer>
+      <div>© 2025</div>
+      <div class="tips">korean · <kbd>wando</kbd></div>
+    </footer>
+  </div>
+</body>
+</html>

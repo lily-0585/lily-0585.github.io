@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>날짜별 누적 인원 수</title>
+    <link href="https://fonts.googleapis.com/css2?family=SUIT:wght@500;700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="src/style.css" />
+
+    <!-- Favicon & PWA manifest -->
+    <link rel="icon" href="../../assets/icons/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="../../assets/icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../../assets/icons/favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="../../assets/icons/apple-touch-icon.png">
+    <link rel="manifest" href="../../site.webmanifest">
+    <meta name="theme-color" content="#0b1020">
+
+  </head>
+  <body>
+    <div id="overlay" class="overlay" aria-live="polite" aria-busy="true">
+      <div class="overlay-card" role="dialog" aria-label="처리 중">
+        <div class="overlay-title">처리 중...</div>
+        <div class="overlay-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+    </div>
+
+    <div class="main-card">
+      <h1>날짜별 누적 인원 수</h1>
+
+      <div class="controls">
+        <div class="file-upload-area">
+          <button id="openPicker" class="file-label" type="button" aria-controls="fileInput">
+            TXT 파일 선택
+          </button>
+          <span id="filename" class="filename">선택된 파일 없음</span>
+        </div>
+
+        <input type="file" id="fileInput" accept=".txt" multiple />
+
+        <div class="extra-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+          <button id="btnShowCondensed" class="action-btn" type="button" title="파일별 최대 누적인원만 카드로 표시">최대치만 보기</button>
+          <button id="btnShowAll" class="action-btn" type="button" title="카드 영역 숨기기">전체 보기</button>
+        </div>
+      </div>
+
+      <!-- 파일별 표를 가로로 배치 -->
+      <div id="tableRegion">
+        <div id="fileTables" class="file-tables" role="list" aria-label="파일별 데이터 표 목록"></div>
+      </div>
+
+      <!-- 최대치 카드 영역 -->
+      <div id="maxCardRegion" class="max-card-region" hidden>
+        <div class="max-region-title">파일별 최대 누적</div>
+        <div id="maxCards" class="max-cards" role="list" aria-label="파일별 최대 누적 카드 목록"></div>
+      </div>
+    </div>
+
+    <script src="src/main.js"></script>
+  </body>
+</html>

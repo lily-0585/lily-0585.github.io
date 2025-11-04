@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>겹치는 이메일 찾기</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Favicon & PWA manifest -->
+  <link rel="icon" href="../../assets/icons/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="../../assets/icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../../assets/icons/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="../../assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="../../site.webmanifest">
+  <meta name="theme-color" content="#0b1020">
+
+  <style>
+    :root { --bd:#ccd1d7; --bg:#f6f7f9; --fg:#111; }
+    html,body{margin:0;padding:20px;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+    .wrap{max-width:960px;margin:0 auto}
+    h1{margin:0 0 12px;font-size:20px}
+    label{display:block;font-weight:600;margin:12px 0 8px}
+    textarea{width:100%;min-height:220px;padding:12px;border:1px solid var(--bd);border-radius:12px;background:#fff;resize:vertical;line-height:1.5;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .row{display:grid;grid-template-columns:1fr;gap:16px}
+    .controls{display:flex;gap:10px;align-items:center;margin:14px 0 18px;flex-wrap:wrap}
+    button{cursor:pointer;border:0;border-radius:10px;padding:10px 16px;font-weight:700}
+    .primary{background:#111;color:#fff}
+    .ghost{background:#e9eef5;color:#111}
+    .stats{font-size:12px;color:#666;margin-left:auto}
+    .output{width:100%;min-height:160px;padding:12px;border:1px solid var(--bd);border-radius:12px;background:#fff;white-space:pre-wrap;line-height:1.6;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .red{color:#d01717}
+    .opts{display:flex;gap:12px;align-items:center;font-size:13px;color:#333}
+    .opts input{vertical-align:middle}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>겹치는 이메일 찾기</h1>
+
+    <label for="a">결제자</label>
+    <textarea id="a" placeholder="한 줄당 하나의 이메일을 붙여넣기"></textarea>
+
+    <label for="b">신청자</label>
+    <textarea id="b" placeholder="한 줄당 하나의 엑셀 row 붙여넣기"></textarea>
+
+    <div class="controls">
+      <button id="run" class="primary">겹치는것 찾기</button>
+      <button id="clear" class="ghost">지우기</button>
+      <button id="copy" class="ghost">복사</button>
+      <div class="opts">
+        <label><input type="checkbox" id="onlyEmail"> 이메일만 복사</label>
+        <label><input type="checkbox" id="tabbed"> 이메일과 원본문장 탭으로 분리</label>
+      </div>
+      <div id="stats" class="stats"></div>
+    </div>
+
+    <label for="result">겹치는 데이터</label>
+    <div id="result" class="output" aria-live="polite"></div>
+  </div>
+
+  <script>
+    // 결제자: 이메일만 붙여넣는 영역
+    function parseEmails(text){
+      const chunks = text.split(/[\r\n,]+/);
+      const out = [];
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+      for (let c of chunks){
+        if (!c) continue;
+        c = c.trim().replace(/[<>"'()]/g,'');
+        if (c === '---' || c === '—') continue;
+        if (re.test(c)) out.push(c);
+      }
+      return out;
+    }
+    const toLowerSet = arr => new Set(arr.map(v => v.toLowerCase()));
+
+    // 신청자: 한 줄에 "이메일 [탭/공백] 기타컬럼..." 형태
+    function parseApplicants(text){
+      const lines = text.split(/\r?\n/);
+      const emailRe = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/; // 첫 이메일만
+      const entries = []; // 입력 순서 유지
+      const emailSet = new Set();
+      for (const raw of lines){
+        if (!raw.trim()) continue;
+        const m = raw.match(emailRe);
+        if (!m) continue;
+        const email = m[0];
+        const lower = email.toLowerCase();
+        entries.push({ lower, email, line: raw });
+        emailSet.add(lower);
+      }
+      return { entries, emailSet };
+    }
+
+    function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+    let lastPlain = ""; // 복사용 텍스트 버퍼
+
+    function buildCopyPayload(matches){
+      const onlyEmail = document.getElementById('onlyEmail').checked;
+      const tabbed = document.getElementById('tabbed').checked;
+
+      // mutually exclusive 처리: 둘 다 체크되면 tabbed 우선
+      if (onlyEmail && !tabbed){
+        return matches.map(m => m.email).join('\r\n');
+      }
+      if (tabbed){
+        // 이메일 \t 원본문장 → 엑셀에서 이메일과 전체 행이 2열로 분리
+        return matches.map(m => `${m.email}\t${m.line}`).join('\r\n');
+      }
+      // 기본: 원본문장 그대로 행 단위
+      return matches.map(m => m.line).join('\r\n');
+    }
+
+    function run(){
+      const aInput = document.getElementById('a').value;
+      const bInput = document.getElementById('b').value;
+
+      const aSet = toLowerSet(parseEmails(aInput));               // 결제자 고유 이메일
+      const { entries, emailSet: bEmailSet } = parseApplicants(bInput); // 신청자 라인+이메일
+
+      // 입력 순서를 유지하여 매칭 라인만 수집
+      const matches = [];
+      for (const { lower, email, line } of entries){
+        if (aSet.has(lower)) matches.push({ email: email.toLowerCase(), line });
+      }
+
+      const result = document.getElementById('result');
+      if (matches.length){
+        // 라인 내 첫 이메일만 강조
+        const html = matches.map(({ email, line }) =>
+          line.replace(new RegExp(escapeRegExp(email), 'i'), '<span class="red">$&</span>')
+        ).join('\n');
+        result.innerHTML = html;
+
+        // 복사용 페이로드 구성 + CRLF 정규화
+        lastPlain = buildCopyPayload(matches).replace(/\r?\n/g, '\r\n');
+      } else {
+        result.textContent = '겹치는 이메일 없음';
+        lastPlain = "";
+      }
+
+      document.getElementById('stats').textContent =
+        `A(결제자): ${aSet.size} · B(신청자 이메일): ${bEmailSet.size} · 겹치는 것: ${matches.length}`;
+    }
+
+    function clearAll(){
+      document.getElementById('a').value = '';
+      document.getElementById('b').value = '';
+      document.getElementById('result').textContent = '';
+      document.getElementById('stats').textContent = '';
+      lastPlain = '';
+    }
+
+    async function copyPlain(){
+      const btn = document.getElementById('copy');
+      if (!lastPlain){
+        btn.textContent = '복사할 내용 없음';
+        setTimeout(() => btn.textContent = '복사', 900);
+        return;
+      }
+      // 안전: 모든 개행을 CRLF로 통일
+      const text = lastPlain.replace(/\r?\n/g, '\r\n');
+
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = '복사됨';
+      } catch {
+        // 폴백: 임시 textarea 이용
+        const ta = document.createElement('textarea');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '복사됨';
+      } finally {
+        setTimeout(() => btn.textContent = '복사', 900);
+      }
+    }
+
+    document.getElementById('run').addEventListener('click', run);
+    document.getElementById('clear').addEventListener('click', clearAll);
+    document.getElementById('copy').addEventListener('click', copyPlain);
+  </script>
+
+</body>
+</html>
